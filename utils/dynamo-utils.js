@@ -1,10 +1,14 @@
-const MAX_READ_ATTEMPTS = 10;
-const MAX_WRITE_ATTEMPTS = 10;
+const DEFAULT_MAX_READ_ATTEMPTS = 10;
+const DEFAULT_MAX_WRITE_ATTEMPTS = 10;
 
 class DynamoUtils {
 
-    constructor(client) {
+    constructor(client, config) {
         this.client = client;
+        this.config = {
+            maxReadAttempts: config && config.maxReadAttempts !== undefined ? config.maxReadAttempts : DEFAULT_MAX_READ_ATTEMPTS,
+            maxWriteAttempts: config && config.maxWriteAttempts !== undefined ? config.maxWriteAttempts : DEFAULT_MAX_WRITE_ATTEMPTS
+        };
     }
 
     _splitifyBatchGetRequest(requestItems) {
@@ -137,6 +141,107 @@ class DynamoUtils {
         });
     }
 
+    batchWriteWithConfirmation(requestItems) {
+
+        let doBatch = (requestItems, attempts) => {
+            return new Promise((resolve, reject) => {
+                this.client.batchWrite({
+                    RequestItems: requestItems
+                }, (err, data) => {
+                    if (err) {
+                        console.log(`[DynamoUtils.batchWrite] - erro ao processar itens => ${err}`);
+                        return resolve({
+                            success: false,
+                            unprocessedItems: requestItems
+                        });
+                    }
+                    if (data.UnprocessedItems) {
+                        if (Object.keys(data.UnprocessedItems).length > 0) {
+                            if (!attempts || attempts < 0)
+                                attempts = 0;
+                            if (attempts < this.config.maxWriteAttempts) {
+                                setTimeout(() => {
+                                    doBatch(data.UnprocessedItems, attempts + 1)
+                                        .then(attemptResult => {
+                                            if (attemptResult.success) {
+                                                let attemptData = attemptResult.data;
+                                                if (attemptData.UnprocessedItems) {
+                                                    for (let tableName in data.UnprocessedItems) {
+                                                        let tableItems = attemptData.UnprocessedItems[tableName];
+                                                        if (tableItems) {
+                                                            data.UnprocessedItems[tableName] = data.UnprocessedItems[tableName].reduce((unprocessedItems, dataItem) => {
+                                                                let found = tableItems.find(attemptDataItem => (attemptDataItem.DeleteRequest && dataItem.DeleteRequest && attemptDataItem.DeleteRequest.Key.id == dataItem.DeleteRequest.Key.id) || (attemptDataItem.PutRequest && dataItem.PutRequest && attemptDataItem.PutRequest.Item.id == dataItem.PutRequest.Item.id));
+                                                                if (found)
+                                                                    unprocessedItems.push(dataItem);
+                                                                return unprocessedItems;
+                                                            }, []);
+                                                        } else
+                                                            delete data.UnprocessedItems[tableName];
+                                                    }
+                                                    if (data.UnprocessedItems && Object.keys(data.UnprocessedItems) == 0)
+                                                        delete data.UnprocessedItems;
+                                                } else
+                                                    delete data.UnprocessedItems;
+                                                if (!data.UnprocessedItems)
+                                                    console.log(`[DynamoUtils.batchWrite] - lote resubmetido pela tentativa ${attempts + 2} gravado com sucesso`);
+                                                return resolve({
+                                                    success: true,
+                                                    data: data
+                                                });
+                                            } else {
+                                                return resolve(attemptResult);
+                                            }
+                                        })
+                                        .catch(err => {
+                                            console.log(`[DynamoUtils.batchWrite] - erro ao processar itens rejeitados na tentativa anterior => ${err}`);
+                                            return resolve({
+                                                success: false,
+                                                unprocessedItems: data.UnprocessedItems
+                                            })
+                                        });
+                                }, Math.pow(2, attempts) * 100);
+                                return;
+                            } else {
+                                console.log(`[DynamoUtils.batchWrite] - alguns itens não puderam ser escritos: ${JSON.stringify(data.UnprocessedItems)}`);
+                                return resolve({
+                                    success: false,
+                                    unprocessedItems: data.UnprocessedItems
+                                });
+                            }
+                        } else
+                            delete data.UnprocessedItems;
+                    }
+                    if (attempts === undefined)
+                        console.log('[DynamoUtils.batchWrite] - lote submetido pela tentativa 1 gravado com sucesso');
+                    return resolve({
+                        success: true,
+                        data: data
+                    });
+                });
+            });
+        }
+
+        return new Promise((resolve, reject) => {
+            let ps = this._splitifyBatchWriteRequest(requestItems).map(r => doBatch(r));
+            Promise.all(ps)
+                .then(results => resolve(results.reduce((result, r) => {
+                    if (!r.success) {
+                        result.success = false;
+                        result.unprocessedItems = result.unprocessedItems || {};
+                        Object.keys(r.unprocessedItems).forEach(tableName => {
+                            if (!result.unprocessedItems[tableName])
+                                result.unprocessedItems[tableName] = [];
+                            result.unprocessedItems[tableName] = result.unprocessedItems[tableName].concat(r.unprocessedItems[tableName]);
+                        })
+                    }
+                    return result;
+                }, {
+                    success: true
+                })))
+                .catch(err => reject(err));
+        });
+    }
+
     batchWrite(requestItems) {
 
         let doBatch = (requestItems, attempts) => {
@@ -150,7 +255,7 @@ class DynamoUtils {
                         if (Object.keys(data.UnprocessedItems).length > 0) {
                             if (!attempts || attempts < 0)
                                 attempts = 0;
-                            if (attempts < MAX_WRITE_ATTEMPTS) {
+                            if (attempts < this.config.maxWriteAttempts) {
                                 setTimeout(() => {
                                     doBatch(data.UnprocessedItems, attempts + 1)
                                         .then(attemptData => {
@@ -217,7 +322,7 @@ class DynamoUtils {
                         if (Object.keys(data.UnprocessedKeys).length > 0) {
                             if (!attempts || attempts < 0)
                                 attempts = 0;
-                            if (attempts < MAX_READ_ATTEMPTS) {
+                            if (attempts < this.config.maxReadAttempts) {
                                 setTimeout(() => {
                                     doBatch(data.UnprocessedKeys, attempts + 1)
                                         .then(bgResult => {
