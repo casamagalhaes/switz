@@ -221,9 +221,24 @@ class DynamoUtils {
             });
         }
 
+        let process = (requests) => {
+            return new Promise((resolve, reject) => {
+                if (requests.length == 0)
+                    return resolve([]);
+                let piece = requests.splice(0, 1000);
+                let ps = piece.map(r => doBatch(r));
+                Promise.all(ps)
+                    .then(results => {
+                        process(requests)
+                            .then(results2 => resolve(results.concat(results2)))
+                            .catch(err => reject(err));
+                    })
+                    .catch(err => reject(err));
+            });
+        }
+
         return new Promise((resolve, reject) => {
-            let ps = this._splitifyBatchWriteRequest(requestItems).map(r => doBatch(r));
-            Promise.all(ps)
+            process(this._splitifyBatchWriteRequest(requestItems))
                 .then(results => resolve(results.reduce((result, r) => {
                     if (!r.success) {
                         result.success = false;
@@ -300,10 +315,22 @@ class DynamoUtils {
             });
         }
 
+        let process = (requests) => {
+            return new Promise((resolve, reject) => {
+                if (requests.length == 0)
+                    return resolve([]);
+                let piece = requests.splice(0, 1000);
+                let ps = piece.map(r => doBatch(r));
+                Promise.all(ps)
+                    .then(() => process(requests))
+                    .then(() => resolve(true))
+                    .catch(err => reject(err));
+            });
+        }
+
         return new Promise((resolve, reject) => {
-            let ps = this._splitifyBatchWriteRequest(requestItems).map(r => doBatch(r));
-            Promise.all(ps)
-                .then(results => resolve(true))
+            process(this._splitifyBatchWriteRequest(requestItems))
+                .then(() => resolve(true))
                 .catch(err => reject(err));
         });
     }
