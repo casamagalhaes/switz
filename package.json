@@ -1,7 +1,7 @@
 {
-  "name": "switz",
-  "version": "1.0.3",
-  "description": "",
+  "name": "cm-switz",
+  "version": "1.0.4",
+  "description": "cm tool",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

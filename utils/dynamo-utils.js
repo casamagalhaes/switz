@@ -98,7 +98,7 @@ class DynamoUtils {
                     return reject(err);
                 let limit = params.Limit;
                 let items = data.Items;
-                if (data.LastEvaluatedKey) {
+                if (items && items.length < limit && data.LastEvaluatedKey) {
                     params.ExclusiveStartKey = data.LastEvaluatedKey;
                     this.scan(params)
                         .then(result => {
