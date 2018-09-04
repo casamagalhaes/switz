@@ -91,7 +91,7 @@ class DynamoUtils {
         });
     }
 
-    _processData(data) {
+    _processData(data, onData) {
         if (typeof onData == 'function') {
             return new Promise((resolve, reject) => {
                 onData(data)
@@ -114,7 +114,7 @@ class DynamoUtils {
                 let limit = params.Limit;
                 let items = data.Items;
                 if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
-                    return this._processData(items)
+                    return this._processData(items, onData)
                         .then(items => {
                             params.ExclusiveStartKey = data.LastEvaluatedKey;
                             this.scanProcessing(params, onData)
@@ -129,7 +129,7 @@ class DynamoUtils {
                 }
                 if (limit > 0)
                     items = items.slice(0, limit);
-                return this._processData(items)
+                return this._processData(items, onData)
                     .then(resolve)
                     .catch(reject);
             });
@@ -148,7 +148,7 @@ class DynamoUtils {
                 let limit = params.Limit;
                 let items = data.Items;
                 if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
-                    return this._processData(items)
+                    return this._processData(items, onData)
                         .then(items => {
                             params.ExclusiveStartKey = data.LastEvaluatedKey;
                             this.queryProcessing(params, onData)
@@ -163,7 +163,7 @@ class DynamoUtils {
                 }
                 if (limit > 0)
                     items = items.slice(0, limit);
-                this._processData(items)
+                this._processData(items, onData)
                     .then(resolve)
                     .catch(reject);
             });
