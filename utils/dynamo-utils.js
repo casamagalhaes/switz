@@ -91,7 +91,7 @@ class DynamoUtils {
         });
     }
 
-    _processData = data => {
+    _processData(data) {
         if (typeof onData == 'function') {
             return new Promise((resolve, reject) => {
                 onData(data)
