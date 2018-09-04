@@ -124,13 +124,13 @@ class DynamoUtils {
                 let items = data.Items;
                 if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
                     return this._processData(items, onData)
-                        .then(items => {
+                        .then(processDataResult => {                            
                             params.ExclusiveStartKey = data.LastEvaluatedKey;
                             this.scanProcessing(params, onData)
                                 .then(result => {
                                     if (limit > 0)
-                                        return resolve(items.concat(result).slice(0, limit));
-                                    return resolve(items.concat(result));
+                                        return resolve(processDataResult.items.concat(result).slice(0, limit));
+                                    return resolve(processDataResult.items.concat(result));
                                 })
                                 .catch(reject);        
                         })
@@ -139,7 +139,7 @@ class DynamoUtils {
                 if (limit > 0)
                     items = items.slice(0, limit);
                 return this._processData(items, onData)
-                    .then(resolve)
+                    .then(processDataResult => resolve(processDataResult.items))
                     .catch(reject);
             });
         });
@@ -158,13 +158,13 @@ class DynamoUtils {
                 let items = data.Items;
                 if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
                     return this._processData(items, onData)
-                        .then(items => {
+                        .then(processDataResult => {
                             params.ExclusiveStartKey = data.LastEvaluatedKey;
                             this.queryProcessing(params, onData)
                                 .then(result => {
                                     if (limit > 0)
-                                        return resolve(items.concat(result).slice(0, limit));
-                                    return resolve(items.concat(result));
+                                        return resolve(processDataResult.items.concat(result).slice(0, limit));
+                                    return resolve(processDataResult.items.concat(result));
                                 })
                                 .catch(reject);
                         })
@@ -173,7 +173,7 @@ class DynamoUtils {
                 if (limit > 0)
                     items = items.slice(0, limit);
                 this._processData(items, onData)
-                    .then(resolve)
+                    .then(processDataResult => resolve(processDataResult.items))
                     .catch(reject);
             });
         });
