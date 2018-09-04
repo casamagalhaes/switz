@@ -92,9 +92,14 @@ class DynamoUtils {
     }
 
     _processData = data => {
-        if (typeof onData == 'function')
-            return onData(data);
-        return Promise.resolve();
+        if (typeof onData == 'function') {
+            return new Promise((resolve, reject) => {
+                onData(data)
+                    .then(() => resolve([]))
+                    .catch(reject);
+            });
+        }
+        return Promise.resolve(data);
     }
 
     scan(params) {
@@ -110,7 +115,7 @@ class DynamoUtils {
                 let items = data.Items;
                 if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
                     return this._processData(items)
-                        .then(() => {
+                        .then(items => {
                             params.ExclusiveStartKey = data.LastEvaluatedKey;
                             this.scanProcessing(params, onData)
                                 .then(result => {
@@ -125,7 +130,7 @@ class DynamoUtils {
                 if (limit > 0)
                     items = items.slice(0, limit);
                 return this._processData(items)
-                    .then(() => resolve(items))
+                    .then(resolve)
                     .catch(reject);
             });
         });
@@ -144,7 +149,7 @@ class DynamoUtils {
                 let items = data.Items;
                 if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
                     return this._processData(items)
-                        .then(() => {
+                        .then(items => {
                             params.ExclusiveStartKey = data.LastEvaluatedKey;
                             this.queryProcessing(params, onData)
                                 .then(result => {
@@ -159,7 +164,7 @@ class DynamoUtils {
                 if (limit > 0)
                     items = items.slice(0, limit);
                 this._processData(items)
-                    .then(() => resolve(items))
+                    .then(resolve)
                     .catch(reject);
             });
         });
