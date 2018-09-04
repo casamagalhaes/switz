@@ -94,9 +94,18 @@ class DynamoUtils {
     _processData(data, onData) {
         if (typeof onData == 'function') {
             return new Promise((resolve, reject) => {
-                onData(data)
-                    .then(() => resolve([]))
-                    .catch(reject);
+                let result = onData(data);
+                if (result instanceof Promise)
+                    return result
+                                .then(cont => resolve({
+                                    continue: cont !== false,
+                                    items: []
+                                }))
+                                .catch(reject);
+                return resolve({
+                    continue: result !== false,
+                    items: []
+                })
             });
         }
         return Promise.resolve(data);
