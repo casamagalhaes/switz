@@ -91,7 +91,17 @@ class DynamoUtils {
         });
     }
 
+    _processData = data => {
+        if (typeof onData == 'function')
+            return onData(data);
+        return Promise.resolve();
+    }
+
     scan(params) {
+        return this.scanProcessing(params);
+    }
+
+    scanProcessing(params, onData) {
         return new Promise((resolve, reject) => {
             this.client.scan(params, (err, data) => {
                 if (err)
@@ -99,44 +109,58 @@ class DynamoUtils {
                 let limit = params.Limit;
                 let items = data.Items;
                 if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
-                    params.ExclusiveStartKey = data.LastEvaluatedKey;
-                    this.scan(params)
-                        .then(result => {
-                            if (limit > 0)
-                                return resolve(items.concat(result).slice(0, limit));
-                            return resolve(items.concat(result));
+                    return this._processData(items)
+                        .then(() => {
+                            params.ExclusiveStartKey = data.LastEvaluatedKey;
+                            this.scanProcessing(params, onData)
+                                .then(result => {
+                                    if (limit > 0)
+                                        return resolve(items.concat(result).slice(0, limit));
+                                    return resolve(items.concat(result));
+                                })
+                                .catch(reject);        
                         })
-                        .catch(err => reject(err));
-                    return;
+                        .catch(reject)
                 }
                 if (limit > 0)
-                    return resolve(items.slice(0, limit));
-                return resolve(items);
+                    items = items.slice(0, limit);
+                return this._processData(items)
+                    .then(() => resolve(items))
+                    .catch(reject);
             });
         });
     }
 
     query(params) {
+        return this.queryProcessing(params);
+    }
+
+    queryProcessing(params, onData) {
         return new Promise((resolve, reject) => {
             this.client.query(params, (err, data) => {
                 if (err)
                     return reject(err);
                 let limit = params.Limit;
                 let items = data.Items;
-                if (data.LastEvaluatedKey) {
-                    params.ExclusiveStartKey = data.LastEvaluatedKey;
-                    this.query(params)
-                        .then(result => {
-                            if (limit > 0)
-                                return resolve(items.concat(result).slice(0, limit));
-                            return resolve(items.concat(result));
+                if ((!limit || items.length < limit) && data.LastEvaluatedKey) {
+                    return this._processData(items)
+                        .then(() => {
+                            params.ExclusiveStartKey = data.LastEvaluatedKey;
+                            this.queryProcessing(params, onData)
+                                .then(result => {
+                                    if (limit > 0)
+                                        return resolve(items.concat(result).slice(0, limit));
+                                    return resolve(items.concat(result));
+                                })
+                                .catch(reject);
                         })
-                        .catch(err => reject(err));
-                    return;
+                        .catch(reject)
                 }
                 if (limit > 0)
-                    return resolve(items.slice(0, limit));
-                return resolve(items);
+                    items = items.slice(0, limit);
+                this._processData(items)
+                    .then(() => resolve(items))
+                    .catch(reject);
             });
         });
     }
