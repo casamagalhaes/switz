@@ -51,6 +51,26 @@ class DynamoUtils {
         return result;
     }
 
+    transactWrite(params) {
+        return new Promise((resolve, reject) => {
+            this.client.transactWrite(params, (err, data) => {
+                if (err)
+                    return reject(err);
+                return resolve(data);
+            })
+        });
+    }
+
+    transactGet(params) {
+        return new Promise((resolve, reject) => {
+            this.client.transactGet(params, (err, data) => {
+                if (err)
+                    return reject(err);
+                return resolve(data.TransactItems);
+            })
+        });
+    }
+
     get(params) {
         return new Promise((resolve, reject) => {
             this.client.get(params, (err, data) => {
