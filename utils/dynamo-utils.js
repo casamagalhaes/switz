@@ -66,7 +66,7 @@ class DynamoUtils {
             this.client.transactGet(params, (err, data) => {
                 if (err)
                     return reject(err);
-                return resolve(data.TransactItems);
+                return resolve(data.Responses);
             })
         });
     }
