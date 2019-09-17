@@ -246,9 +246,7 @@ class DynamoUtils {
                                                     if (data.UnprocessedItems && Object.keys(data.UnprocessedItems) == 0)
                                                         delete data.UnprocessedItems;
                                                 } else
-                                                    delete data.UnprocessedItems;
-                                                if (!data.UnprocessedItems)
-                                                    // console.log(`[DynamoUtils.batchWrite] - lote resubmetido pela tentativa ${attempts + 2} gravado com sucesso`);
+                                                    delete data.UnprocessedItems;                                                
                                                 return resolve({
                                                     success: true,
                                                     data: data
@@ -276,8 +274,6 @@ class DynamoUtils {
                         } else
                             delete data.UnprocessedItems;
                     }
-                    if (attempts === undefined)
-                        // console.log('[DynamoUtils.batchWrite] - lote submetido pela tentativa 1 gravado com sucesso');
                     return resolve({
                         success: true,
                         data: data
@@ -341,8 +337,6 @@ class DynamoUtils {
                                                     delete data.UnprocessedItems;
                                             } else
                                                 delete data.UnprocessedItems;
-                                            if (!data.UnprocessedItems)
-                                                // console.log(`[DynamoUtils.batchWrite] - lote resubmetido pela tentativa ${attempts + 2} gravado com sucesso`);
                                             return resolve(data);
                                         })
                                         .catch(err => reject(err));
@@ -358,8 +352,6 @@ class DynamoUtils {
                         } else
                             delete data.UnprocessedItems;
                     }
-                    if (attempts === undefined)
-                        // console.log('[DynamoUtils.batchWrite] - lote submetido pela tentativa 1 gravado com sucesso');
                     return resolve(data);
                 });
             });
@@ -403,8 +395,7 @@ class DynamoUtils {
                                         .catch(err => reject(err));
                                 }, Math.pow(2, attempts) * 100);
                                 return;
-                            } else
-                                // console.log(`[DynamoUtils.batchGet] - alguns itens não puderam ser lidos: ${JSON.stringify(data.UnprocessedKeys)}`);
+                            }
                             return reject({
                                 code: 'CAPACIDADE_LEITURA_INSUFICIENTE',
                                 message: 'não foi possível ler todos os dados'
