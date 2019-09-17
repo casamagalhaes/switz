@@ -276,8 +276,6 @@ class DynamoUtils {
                         } else
                             delete data.UnprocessedItems;
                     }
-                    if (attempts === undefined)
-                        // console.log('[DynamoUtils.batchWrite] - lote submetido pela tentativa 1 gravado com sucesso');
                     return resolve({
                         success: true,
                         data: data
@@ -358,8 +356,6 @@ class DynamoUtils {
                         } else
                             delete data.UnprocessedItems;
                     }
-                    if (attempts === undefined)
-                        // console.log('[DynamoUtils.batchWrite] - lote submetido pela tentativa 1 gravado com sucesso');
                     return resolve(data);
                 });
             });
